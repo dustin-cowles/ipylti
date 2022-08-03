@@ -64,6 +64,7 @@ def get_tool_conf():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     """Handles login request from tool consumer."""
+
     flask_request = FlaskRequest()
     target_link_uri = flask_request.get_param("target_link_uri")
 
@@ -105,11 +106,12 @@ def launch():
     roles = launch_data["https://purl.imsglobal.org/spec/lti/claim/roles"]
 
     if all([context_id, user_id, resource_id, roles]):
+        build = INSTRUCTOR_ROLE in roles or ADMIN_ROLE in roles
         launch_id = hashlib.sha256(
             bytes("".join([context_id, user_id, resource_id]), encoding="utf-8")
         ).hexdigest()
         logging.debug("launch_id: %s", launch_id)
-        launch_url = docker_agent.launch_container(launch_id)
+        launch_url = docker_agent.launch_container(launch_id, resource_id, build)
         logging.debug("launch_url: %s", launch_url)
     else:
         raise Exception("Missing launch params")
@@ -136,12 +138,12 @@ def well_known(filename):
 def export_jwks(tool_conf):
     """
     Exports the jwks.json file to the well-known directory.
-    
+
     :param toolconf: The tool configuration.
-    
+
     :returns: None
     """
-    
+
     directory = os.path.join(os.path.dirname(__file__), "well-known")
 
     if not os.path.exists(directory):
