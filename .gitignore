@@ -2,3 +2,4 @@
 .DS_Store
 jwks.json
 __pycache__/
+.venv/

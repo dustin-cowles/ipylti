@@ -11,9 +11,11 @@ services:
       - DB_PASSWORD=postgres
       - DB_NAME=ipylti-api
       - DB_URL=sql://db:5432/
+      - DOCKER_HOST=unix:///var/run/docker.sock
       - VIRTUAL_HOST=ipylti.docker
     volumes:
       - ./src/app:/app/
+      - /var/run/docker.sock:/var/run/docker.sock
     command: uvicorn main:asgi_app --host 0.0.0.0 --port 80 --reload
     external_links:
       - http-proxy:canvas.docker

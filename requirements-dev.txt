@@ -1,0 +1,7 @@
+-r src/app/requirements.txt
+-r src/nb/requirements.txt
+
+# development
+autopep8==1.6.0
+  pycodestyle==2.9.0
+  toml==0.10.2
