@@ -3,3 +3,4 @@
 jwks.json
 __pycache__/
 .venv/
+*.egg-info/
