@@ -1,0 +1,15 @@
+{
+    "https://canvas.instructure.com": [
+        {
+            "default": true,
+            "client_id": "10000000000014",
+            "auth_login_url": "http://canvas.docker/api/lti/authorize_redirect",
+            "auth_token_url": "http://canvas.docker/login/oauth2/token",
+            "auth_audience": null,
+            "key_set_url": "http://canvas.docker/api/lti/security/jwks",
+            "private_key_file": "private_key.pem",
+            "public_key_file": "public_key.pem",
+            "deployment_ids": ["12:8865aa05b4b79b64a91a86042e43af5ea8ae79eb", "13:b82229c6e10bcb87beb1f1b287faee560ddc3109"]
+        }
+    ]
+}

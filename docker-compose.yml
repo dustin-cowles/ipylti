@@ -1,0 +1,51 @@
+version: '3.0'
+
+services:
+  app:
+    build: src/app
+    ports:
+      - 80
+    environment:
+      - DB_TYPE=postgresql
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=ipylti-api
+      - DB_URL=sql://db:5432/
+      - VIRTUAL_HOST=ipylti.docker
+    volumes:
+      - ./src/app:/app/
+    command: uvicorn main:asgi_app --host 0.0.0.0 --port 80 --reload
+    external_links:
+      - http-proxy:canvas.docker
+    networks:
+      - frontend
+      - backend
+
+  redis:
+    image: redis:alpine
+    ports:
+      - 6379
+    restart: always
+    networks:
+      - backend
+
+  db:
+    image: postgres
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - 5432
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=ipylti-api
+    restart: always
+    networks:
+      - backend
+
+volumes:
+  pgdata: {}
+
+networks:
+  frontend: {}
+  backend: {}

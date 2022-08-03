@@ -1,0 +1,39 @@
+{
+   "title": "Interactive Python LTI",
+   "scopes": [
+       "https://purl.imsglobal.org/spec/lti-ags/scope/lineitem",
+       "https://purl.imsglobal.org/spec/lti-ags/scope/result.readonly",
+       "https://purl.imsglobal.org/spec/lti-ags/scope/score"
+   ],
+   "extensions": [
+       {
+           "platform": "canvas.instructure.com",
+           "settings": {
+               "platform": "canvas.docker",
+               "text": "Interactive Python Assignment",
+               "icon_url": "http://ipylti.docker/static/ipylti.svg",
+               "placements": [
+                   {
+                       "url": "http://ipylti.docker/launch",
+                       "text": "Interactive Python Assignment",
+                       "placement": "assignment_selection",
+                       "message_type": "LtiResourceLinkRequest",
+                       "target_link_uri": "http://ipylti.docker/launch",
+                       "selection_height": 800,
+                       "selection_width": 800,
+                       "icon_url": "http://ipylti.docker/static/ipylti.svg"
+                   }
+               ],
+               "selection_width": 800,
+               "selection_height": 800
+           },
+           "domain": "ipylti.docker",
+           "tool_id": "ipylti",
+           "privacy_level": "public"
+       }
+   ],
+   "description": "A tool for teaching and learning Python using interactive asignments powered by Jupyter",
+   "public_jwk_url": "http://ipylti.docker/.well-known/jwks.json",
+   "target_link_uri": "http://ipylti.docker/launch",
+   "oidc_initiation_url": "http://ipylti.docker/login"
+}
