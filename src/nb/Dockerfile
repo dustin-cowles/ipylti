@@ -1,12 +1,10 @@
 # syntax=docker/dockerfile:1
 FROM jupyter/minimal-notebook
 
-# Enable embedding in iframe for JupyterNotebook
-RUN echo "c.NotebookApp.tornado_settings = {'headers': {'Content-Security-Policy': \"frame-ancestors ipylti.docker \", 'Access-Control-Allow-Origin': '*'}}" >> /etc/jupyter/jupyter_notebook_config.py
+WORKDIR = /jupyter-workspace
+ENV NOTEBOOK_ARGS="--log-level='DEBUG' --notebook-dir=/jupyter-workspace"
 
-# Enable embedding in iframe for JupyterHub
-# RUN echo "c.JupyterHub.tornado_settings = {'headers': {'Content-Security-Policy': \"frame-ancestors ipylti.docker\", 'Access-Control-Allow-Origin': '*'}}" >> /etc/jupyter/jupyter_server_config.py.py
-
-WORKDIR /notebooks
-CMD ["jupyter", "notebook", "--notebook-dir", "/notebooks"]
-#, "--config", "/etc/jupyter/jupyter_notebook_config.py"]
+# /etc/jupyter/jupyter_server_config.py
+RUN echo "c.ServerApp.tornado_settings = {'headers': {'Content-Security-Policy': 'frame-ancestors ipylti.docker', 'Access-Control-Allow-Origin': '*'}}" >> /etc/jupyter/jupyter_server_config.py
+RUN echo "c.ServerApp.disable_check_xsrf = True" >> /etc/jupyter/jupyter_server_config.py
+RUN echo "c.ServerApp.allow_origin = '*'" >> /etc/jupyter/jupyter_server_config.py
