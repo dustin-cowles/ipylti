@@ -7,11 +7,11 @@ TODO: Support k8s.
 TODO: Support other types of containers i.e. JupyterLab
 """
 import logging
-from time import sleep
 
 import docker
 
-from constants import CONTAINER_NAME, JUPYTER_TOKEN_REGEX, JUPYTER_IMAGE
+from constants import JUPYTER_CONTAINER_NAME, JUPYTER_IMAGE, JUPYTER_TOKEN_REGEX, JUPYTER_WORKSPACE
+
 
 class DockerAgent:
     """
@@ -53,7 +53,7 @@ class DockerAgent:
         """
         try:
             # We currently only support a single container at a time.
-            self.client.containers.get(CONTAINER_NAME).remove(force=True)
+            self.client.containers.get(JUPYTER_CONTAINER_NAME).remove(force=True)
         except docker.errors.NotFound:
             pass
 
@@ -61,10 +61,10 @@ class DockerAgent:
         logging.debug("Launching container %s", host_name)
         container = self.client.containers.run(
             JUPYTER_IMAGE,
-            name=CONTAINER_NAME,
+            name=JUPYTER_CONTAINER_NAME,
             detach=True,
             volumes={self._get_volume_id(launch_id, resource_id, build):
-                        {"bind": "/jupyter-workspace", "mode": "rw"}
+                        {"bind": JUPYTER_WORKSPACE, "mode": "rw"}
                     },
             environment={"VIRTUAL_HOST": host_name, "VIRTUAL_PORT": 8888}
         )
@@ -96,8 +96,6 @@ class DockerAgent:
         :return: The id of the volume.
         :rtype: str
         """
-        # TODO: Support cloning from assignment base volume.
-
         volume_name = resource_id if build else launch_id
 
         try:
