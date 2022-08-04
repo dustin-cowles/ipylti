@@ -4,60 +4,17 @@ This implements the Flask application server which manages
 LTI authentication and launches Jupyter notebook servers.
 """
 import hashlib
-import json
 import logging
-import os
 
-from asgiref.wsgi import WsgiToAsgi
-from flask import Flask, Markup, render_template, send_from_directory
-from flask_caching import Cache
-from pylti1p3.contrib.flask import (FlaskCacheDataStorage, FlaskMessageLaunch,
-                                    FlaskOIDCLogin, FlaskRequest)
-from pylti1p3.tool_config import ToolConfJsonFile
+from flask import Markup, render_template, send_from_directory
+from pylti1p3.contrib.flask import (FlaskMessageLaunch, FlaskOIDCLogin,
+                                    FlaskRequest)
 
-from docker_agent import DockerAgent
+from constants import ADMIN_ROLE, INSTRUCTOR_ROLE
+from helpers import (get_docker_agent, get_launch_data_storage, get_tool_conf,
+                     setup_app)
 
-app = Flask(__name__, template_folder="templates", static_folder="static")
-app.config.from_file(os.path.join(
-    "config", "flask_config.json"), load=json.load)
-cache = Cache(app)
-
-docker_agent = DockerAgent()
-
-# Roles passed from the tool consumer.
-ADMIN_ROLE = "http://purl.imsglobal.org/vocab/lis/v2/institution/person#Administrator"
-INSTRUCTOR_ROLE = "http://purl.imsglobal.org/vocab/lis/v2/institution/person#Instructor"
-STUDENT_ROLE = "http://purl.imsglobal.org/vocab/lis/v2/institution/person#Student"
-
-# TODO: Remove forced logging level
-logging.getLogger().setLevel(10)
-logging.debug("Flask Config: %s", app.config)
-
-
-def get_launch_data_storage():
-    """
-    Returns the launch data storage.
-
-    :params: None
-
-    :return: The launch data storage.
-    :rtype: FlaskCacheDataStorage
-    """
-
-    return FlaskCacheDataStorage(cache)
-
-
-def get_tool_conf():
-    """
-    Loads and returns the tool configuration.
-
-    :params: None
-
-    :return: The tool configuration.
-    :rtype: ToolConfJsonFile
-    """
-
-    return ToolConfJsonFile(os.path.join("config", "tool_config.json"))
+app, asgi_app = setup_app(__name__)
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -73,7 +30,7 @@ def login():
     return FlaskOIDCLogin(
         request=flask_request,
         tool_config=get_tool_conf(),
-        launch_data_storage=get_launch_data_storage()
+        launch_data_storage=get_launch_data_storage(app)
     ).enable_check_cookies().redirect(target_link_uri)
 
 
@@ -93,7 +50,7 @@ def launch():
     message_launch = FlaskMessageLaunch(
         request=flask_request,
         tool_config=get_tool_conf(),
-        launch_data_storage=get_launch_data_storage()
+        launch_data_storage=get_launch_data_storage(app)
     )
 
     launch_data = message_launch.get_launch_data()
@@ -112,7 +69,7 @@ def launch():
             bytes("".join([context_id, user_id, resource_id]), encoding="utf-8")
         ).hexdigest()
         logging.debug("launch_id: %s", launch_id)
-        launch_url = docker_agent.launch_container(launch_id, resource_id, build)
+        launch_url = get_docker_agent().launch_container(launch_id, resource_id, build)
         logging.debug("launch_url: %s", launch_url)
     else:
         raise Exception("Missing launch params")
@@ -140,26 +97,3 @@ def well_known(filename):
     """
 
     return send_from_directory("well-known", filename, conditional=True)
-
-
-def export_jwks(tool_conf):
-    """
-    Exports the jwks.json file to the well-known directory.
-
-    :param toolconf: The tool configuration.
-
-    :returns: None
-    """
-
-    directory = os.path.join(os.path.dirname(__file__), "well-known")
-
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-
-    with open(os.path.join(directory, "jwks.json"), "w", encoding="utf8") as file:
-        file.write(json.dumps(tool_conf.get_jwks()))
-
-
-export_jwks(get_tool_conf())
-# TODO: Host using a reverse proxy and wsgi
-asgi_app = WsgiToAsgi(app)

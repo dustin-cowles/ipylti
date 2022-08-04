@@ -6,16 +6,12 @@ TODO: Support multiple containers.
 TODO: Support k8s.
 TODO: Support other types of containers i.e. JupyterLab
 """
-
 import logging
-import re
 from time import sleep
 
 import docker
 
-TOKEN_REGEX = re.compile(r"\?token=(.*)$")
-CONTAINER_NAME = "ipylti-nb"
-
+from constants import CONTAINER_NAME, JUPYTER_TOKEN_REGEX, JUPYTER_IMAGE
 
 class DockerAgent:
     """
@@ -55,37 +51,32 @@ class DockerAgent:
         :return: The url including login token for the Jupyter instance.
         :rtype: str
         """
-        # TODO: Support multiple containers.
         try:
-            # TODO: Improve Lifecycle Management.
+            # We currently only support a single container at a time.
             self.client.containers.get(CONTAINER_NAME).remove(force=True)
-        except Exception: # pylint: disable=broad-except
+        except docker.errors.NotFound:
             pass
 
         host_name = f"{launch_id[0:12]}.nb.docker"
+        logging.debug("Launching container %s", host_name)
         container = self.client.containers.run(
-            "nb",
+            JUPYTER_IMAGE,
             name=CONTAINER_NAME,
             detach=True,
             volumes={self._get_volume_id(launch_id, resource_id, build):
-                        {"bind": "/notebooks", "mode": "rw"}
+                        {"bind": "/jupyter-workspace", "mode": "rw"}
                     },
             environment={"VIRTUAL_HOST": host_name, "VIRTUAL_PORT": 8888}
         )
 
         logging.debug("container: %s", container.status)
-        # TODO: Many improvements can be made to this.
-        while container.status in ["running", "created"]:
-            try:
-                logs = container.logs().decode("utf-8")
-                token = TOKEN_REGEX.search(logs).group()
-                if token:
-                    logging.debug("token: %s", token)
-                    break
-            except AttributeError: # TOKEN_REGEX.search(logs) returns None.
-                sleep(3)
-                container.reload()
-                continue
+        # This should probably have a timeout
+        for line in container.logs(stream=True):
+            match = JUPYTER_TOKEN_REGEX.search(line.decode("utf-8"))
+            if match:
+                token = match.group()
+                logging.debug("token: %s", token)
+                break
 
         return f"http://{host_name}/{token}"
 
@@ -129,7 +120,6 @@ class DockerAgent:
 
         :return: None
         """
-        # TODO: Cloned contents are currently read-only.
         logging.debug("Cloning %s into %s", source_volume_id, destination_volume_id)
         container_logs = self.client.containers.run(
             "alpine",
