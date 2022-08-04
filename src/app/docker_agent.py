@@ -133,7 +133,7 @@ class DockerAgent:
         logging.debug("Cloning %s into %s", source_volume_id, destination_volume_id)
         container_logs = self.client.containers.run(
             "alpine",
-            ["sh", "-c", "cp -R /source/* /destination/"],
+            ["sh", "-c", "cp -R /source/* /destination/ && chown -R 1000:1000 /destination"],
             volumes={
                 source_volume_id: {"bind": "/source", "mode": "ro"},
                 destination_volume_id: {"bind": "/destination", "mode": "rw"}})

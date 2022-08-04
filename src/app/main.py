@@ -9,14 +9,13 @@ import logging
 import os
 
 from asgiref.wsgi import WsgiToAsgi
-from flask import Flask, send_from_directory, redirect
+from flask import Flask, Markup, render_template, send_from_directory
 from flask_caching import Cache
 from pylti1p3.contrib.flask import (FlaskCacheDataStorage, FlaskMessageLaunch,
                                     FlaskOIDCLogin, FlaskRequest)
 from pylti1p3.tool_config import ToolConfJsonFile
 
 from docker_agent import DockerAgent
-
 
 app = Flask(__name__, template_folder="templates", static_folder="static")
 app.config.from_file(os.path.join(
@@ -100,10 +99,12 @@ def launch():
     launch_data = message_launch.get_launch_data()
     logging.debug("launch_data: %s", launch_data)
 
-    context_id = launch_data["https://purl.imsglobal.org/spec/lti/claim/context"]["id"]
-    resource_id = launch_data["https://purl.imsglobal.org/spec/lti/claim/resource_link"]["id"]
     user_id = launch_data["https://purl.imsglobal.org/spec/lti/claim/lti1p1"]["user_id"]
     roles = launch_data["https://purl.imsglobal.org/spec/lti/claim/roles"]
+    context_id = launch_data["https://purl.imsglobal.org/spec/lti/claim/context"]["id"]
+    resource_id = launch_data["https://purl.imsglobal.org/spec/lti/claim/resource_link"]["id"]
+    title = Markup(launch_data["https://purl.imsglobal.org/spec/lti/claim/resource_link"]["title"]).striptags()
+    description = Markup(launch_data["https://purl.imsglobal.org/spec/lti/claim/resource_link"]["description"]).striptags()
 
     if all([context_id, user_id, resource_id, roles]):
         build = INSTRUCTOR_ROLE in roles or ADMIN_ROLE in roles
@@ -118,7 +119,13 @@ def launch():
     if not launch_url:
         raise Exception("Missing launch url")
 
-    return redirect(location=launch_url)
+
+    return render_template(
+        "launch.html",
+        launch_url=launch_url,
+        title=title,
+        description=description
+    )
 
 
 @app.route("/.well-known/<path:filename>")
