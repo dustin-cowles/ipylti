@@ -4,9 +4,9 @@ import logging
 import os
 
 from asgiref.wsgi import WsgiToAsgi
-from flask import Flask
+from flask import Flask, Markup
 from flask_caching import Cache
-from pylti1p3.contrib.flask import FlaskCacheDataStorage
+from pylti1p3.contrib.flask import FlaskCacheDataStorage, FlaskMessageLaunch
 from pylti1p3.tool_config import ToolConfJsonFile
 
 from docker_agent import DockerAgent
@@ -31,7 +31,7 @@ def setup_app(app_name, template_folder="templates", static_folder="static"):
         "config", "flask_config.json"), load=json.load)
     logging.debug("Flask Config: %s", app.config)
     asgi_app = WsgiToAsgi(app)
-    return app, asgi_app
+    return app, asgi_app, get_launch_data_storage(app)
 
 
 def get_docker_agent():
@@ -55,7 +55,6 @@ def configure_logging():
 
     :return: None
     """
-    # TODO: Remove forced logging level
     logging.getLogger().setLevel(10)
 
 
@@ -84,6 +83,25 @@ def get_tool_conf():
     """
 
     return ToolConfJsonFile(os.path.join("config", "tool_config.json"))
+
+
+def get_message_launch(launch_id, request, launch_data_storage):
+    """
+    Retrieves the message_launch from cache and returns it.
+
+    :param launch_id: The original launch_id.
+    :param request: The flask request.
+
+    :returns: The message_launch.
+    :rtpes: MessageLaunch
+    """
+    logging.debug("Getting message_launch from cache")
+    logging.debug("Launch ID: %s", launch_id)
+    logging.debug("Request: %s", request)
+    logging.debug("Launch Data Storage: %s", launch_data_storage)
+    return FlaskMessageLaunch.from_cache(
+        launch_id, request, get_tool_conf(),
+        launch_data_storage=launch_data_storage)
 
 
 def export_jwks(tool_conf):

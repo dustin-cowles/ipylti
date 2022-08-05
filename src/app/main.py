@@ -3,18 +3,18 @@ The main entry point for the application server.
 This implements the Flask application server which manages
 LTI authentication and launches Jupyter notebook servers.
 """
-import hashlib
 import logging
 
 from flask import Markup, render_template, send_from_directory
-from pylti1p3.contrib.flask import (FlaskMessageLaunch, FlaskOIDCLogin,
-                                    FlaskRequest)
+from pylti1p3.contrib.flask import (FlaskCookieService, FlaskMessageLaunch,
+                                    FlaskOIDCLogin, FlaskRequest)
 
 from constants import ADMIN_ROLE, INSTRUCTOR_ROLE
-from helpers import (get_docker_agent, get_launch_data_storage, get_tool_conf,
+from grading import submit_asignment
+from helpers import (get_docker_agent, get_message_launch, get_tool_conf,
                      setup_app)
 
-app, asgi_app = setup_app(__name__)
+app, asgi_app, launch_data_storage = setup_app(__name__)
 
 
 @app.route("/login", methods=["GET", "POST"])
@@ -30,7 +30,8 @@ def login():
     return FlaskOIDCLogin(
         request=flask_request,
         tool_config=get_tool_conf(),
-        launch_data_storage=get_launch_data_storage(app)
+        launch_data_storage=launch_data_storage,
+        cookie_service=FlaskCookieService(flask_request)
     ).enable_check_cookies().redirect(target_link_uri)
 
 
@@ -50,25 +51,30 @@ def launch():
     message_launch = FlaskMessageLaunch(
         request=flask_request,
         tool_config=get_tool_conf(),
-        launch_data_storage=get_launch_data_storage(app)
+        launch_data_storage=launch_data_storage
     )
 
+    # Cache the public key for the LMS.
+    message_launch.set_public_key_caching(launch_data_storage, cache_lifetime=7200)
+
+    launch_id = message_launch.get_launch_id()
     launch_data = message_launch.get_launch_data()
-    logging.debug("launch_data: %s", launch_data)
+    logging.debug("launch_id: %s\nlaunch_data: %s", launch_id, launch_data)
 
     user_id = launch_data["https://purl.imsglobal.org/spec/lti/claim/lti1p1"]["user_id"]
     roles = launch_data["https://purl.imsglobal.org/spec/lti/claim/roles"]
     context_id = launch_data["https://purl.imsglobal.org/spec/lti/claim/context"]["id"]
     resource_id = launch_data["https://purl.imsglobal.org/spec/lti/claim/resource_link"]["id"]
-    title = Markup(launch_data["https://purl.imsglobal.org/spec/lti/claim/resource_link"]["title"]).striptags()
-    description = Markup(launch_data["https://purl.imsglobal.org/spec/lti/claim/resource_link"]["description"]).striptags()
+    title = Markup(
+        launch_data["https://purl.imsglobal.org/spec/lti/claim/resource_link"]["title"]
+    ).striptags()
+    description = Markup(
+        launch_data["https://purl.imsglobal.org/spec/lti/claim/resource_link"]["description"]
+    ).striptags()
 
     if all([context_id, user_id, resource_id, roles]):
         build = INSTRUCTOR_ROLE in roles or ADMIN_ROLE in roles
-        launch_id = hashlib.sha256(
-            bytes("".join([context_id, user_id, resource_id]), encoding="utf-8")
-        ).hexdigest()
-        logging.debug("launch_id: %s", launch_id)
+        logging.debug("building assignment? %s", build)
         launch_url = get_docker_agent().launch_container(launch_id, resource_id, build)
         logging.debug("launch_url: %s", launch_url)
     else:
@@ -76,13 +82,35 @@ def launch():
     if not launch_url:
         raise Exception("Missing launch url")
 
-
     return render_template(
         "launch.html",
         launch_url=launch_url,
         title=title,
-        description=description
+        description=description,
+        launch_id=launch_id,
+        build=build
     )
+
+
+@app.route("/submit/<launch_id>", methods=["GET", "POST"])
+def submit(launch_id):
+    """
+    Submits the assignment to the LMS.
+
+    :param launch_id: The launch id.
+
+    :returns: None
+    """
+    message_launch = get_message_launch(launch_id, FlaskRequest(), launch_data_storage)
+    if message_launch.has_ags():
+        try:
+            submit_asignment(message_launch)
+            success = True
+        except Exception as err:  # pylint: disable=broad-except
+            logging.error("Error submitting assignment: %s", err)
+            success = False
+
+    return render_template("submit.html", success=success)
 
 
 @app.route("/.well-known/<path:filename>")

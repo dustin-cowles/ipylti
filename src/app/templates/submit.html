@@ -1,0 +1,18 @@
+<!doctype HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+
+<head>
+    <title>Submit Assignment</title>
+</head>
+
+<body>
+    {% block content %}
+        {% if success %}
+            <h1>Assignment Submitted!</h1>
+        {% else %}
+            <h1>Assignment Submision Failed!</h1>
+        {% endif %}
+    {% endblock content %}
+</body>
+
+</html>

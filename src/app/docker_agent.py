@@ -58,7 +58,7 @@ class DockerAgent:
             pass
 
         host_name = f"{launch_id[0:12]}.nb.docker"
-        logging.debug("Launching container %s", host_name)
+        logging.info("Launching container %s", host_name)
         container = self.client.containers.run(
             JUPYTER_IMAGE,
             name=JUPYTER_CONTAINER_NAME,
@@ -118,13 +118,15 @@ class DockerAgent:
 
         :return: None
         """
-        logging.debug("Cloning %s into %s", source_volume_id, destination_volume_id)
+        logging.info("Cloning %s into %s", source_volume_id, destination_volume_id)
         container_logs = self.client.containers.run(
             "alpine",
             ["sh", "-c", "cp -R /source/* /destination/ && chown -R 1000:1000 /destination"],
+            name="ipylti-clone",
             volumes={
                 source_volume_id: {"bind": "/source", "mode": "ro"},
                 destination_volume_id: {"bind": "/destination", "mode": "rw"}})
         logging.debug("START clone container logs")
         logging.debug(container_logs)
         logging.debug("END clone container logs")
+        self.client.containers.get("ipylti-clone").remove(force=True)
