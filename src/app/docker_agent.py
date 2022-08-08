@@ -57,7 +57,7 @@ class DockerAgent:
         except docker.errors.NotFound:
             pass
 
-        host_name = f"{launch_id[0:12]}.nb.docker"
+        host_name = f"{launch_id[-12:]}.nb.docker"
         logging.info("Launching container %s", host_name)
         container = self.client.containers.run(
             JUPYTER_IMAGE,

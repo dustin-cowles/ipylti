@@ -1,11 +1,12 @@
 """ Helper functions for grading assignments """
+import asyncio
 from datetime import datetime
 import logging
 
 from pylti1p3.grade import Grade
 
 
-def submit_asignment(message_launch):
+async def submit_assignment(message_launch):
     """
     Marks the assignment as complete in the LMS.
 

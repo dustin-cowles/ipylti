@@ -3,16 +3,29 @@
 
 <head>
     <title>Submit Assignment</title>
+    <style>
+        div {
+            font-size: 24px;
+            text-align: center;
+            font-family: 'Lato Extended', Lato, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            margin: 0 auto;
+            width: 500px;
+        }
+    </style>
 </head>
 
 <body>
-    {% block content %}
-        {% if success %}
-            <h1>Assignment Submitted!</h1>
-        {% else %}
-            <h1>Assignment Submision Failed!</h1>
-        {% endif %}
-    {% endblock content %}
+    <div>
+        {% block content %}
+            {% if success %}
+                <h1>Assignment Submitted!</h1>
+                <img src="http://ipylti.docker/static/success.svg" />
+            {% else %}
+                <h1>Submission Failed!</h1>
+                <img src="http://ipylti.docker/static/problem.svg" />
+            {% endif %}
+        {% endblock content %}
+    </div>
 </body>
 
 </html>

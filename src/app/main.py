@@ -8,9 +8,10 @@ import logging
 from flask import Markup, render_template, send_from_directory
 from pylti1p3.contrib.flask import (FlaskCookieService, FlaskMessageLaunch,
                                     FlaskOIDCLogin, FlaskRequest)
+from pylti1p3.exception import LtiException
 
 from constants import ADMIN_ROLE, INSTRUCTOR_ROLE
-from grading import submit_asignment
+from grading import submit_assignment
 from helpers import (get_docker_agent, get_message_launch, get_tool_conf,
                      setup_app)
 
@@ -101,14 +102,19 @@ def submit(launch_id):
 
     :returns: None
     """
-    message_launch = get_message_launch(launch_id, FlaskRequest(), launch_data_storage)
-    if message_launch.has_ags():
-        try:
-            submit_asignment(message_launch)
+    # There is currently no auth, we just use the launch_id to mark the assignment as complete.
+    try:
+        success = False
+        message_launch = get_message_launch(launch_id, FlaskRequest(), launch_data_storage)
+        if message_launch.has_ags():
+            submit_assignment(message_launch)
             success = True
-        except Exception as err:  # pylint: disable=broad-except
-            logging.error("Error submitting assignment: %s", err)
-            success = False
+        else:
+            logging.error("Error submitting assignment, grading service unavailable")
+    except LtiException as err:
+        logging.error("Unable to retrieve message_launch for launch_id %s: %s",launch_id, err)
+    except AttributeError as err:
+        logging.error("Invalid message_launch data found for launch_id %s: %s", launch_id, err)
 
     return render_template("submit.html", success=success)
 
